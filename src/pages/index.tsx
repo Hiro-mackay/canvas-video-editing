@@ -1,47 +1,106 @@
+import { useEffect, useRef, useState } from 'react';
+
 export default function Home() {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [context, setContext] = useState<CanvasRenderingContext2D>();
+  const [video, setVideo] = useState<HTMLVideoElement>();
+
+  const FRAME_RATE = 30;
+  let time = 0;
+  let globalFrame = 0;
+  let isStarted = false;
+
+  const showFrame = (frame: number, _video?: HTMLVideoElement) => {
+    context.clearRect(0, 0, ref.current.width, ref.current.height);
+    const element = _video || video;
+    time = frame / FRAME_RATE;
+    element.currentTime = time;
+    console.log(element.currentTime, time, frame);
+    context.drawImage(element, 0, 0, ref.current.width, ref.current.height);
+  };
+
+  const rendere = (frame: number) => {
+    if (!isStarted) {
+      return;
+    }
+    showFrame(frame);
+    const next = frame + 1;
+    requestAnimationFrame(() => {
+      rendere(next);
+    });
+  };
+
+  const next = () => {
+    globalFrame += 1;
+    showFrame(globalFrame);
+  };
+
+  const play = () => {
+    if (!video) {
+      console.error('not set video ref');
+      return;
+    }
+    isStarted = true;
+    const frame = 0;
+    rendere(frame);
+  };
+
+  const stop = () => {
+    isStarted = false;
+  };
+
+  const load = (file: File) => {
+    const path = URL.createObjectURL(file);
+    const v = document.createElement('video');
+
+    v.src = path;
+    v.width = ref.current.width;
+    v.height = ref.current.height;
+
+    v.onloadeddata = () => {
+      setVideo(v);
+      showFrame(0, v);
+    };
+  };
+
+  const handleChange = (e: React.FormEvent<HTMLInputElement>) => {
+    if (!e.currentTarget.files.length) {
+      console.error('not set asset');
+      return;
+    }
+    load(e.currentTarget.files[0]);
+  };
+
+  useEffect(() => {
+    const ctx = ref.current.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    ctx.scale(dpr, dpr);
+    setContext(ctx);
+  }, [ref]);
+
   return (
     <div>
       <main>
-        <h1>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
+        {/* <div className="p-10 max-w-7xl bg-gray-800">
+          <div className="relative" style={{ paddingTop: '60%' }}> */}
+        <canvas ref={ref} className="bg-gray-800" width="1280" height="720">
+          Canvas viewer
+        </canvas>
+        {/* </div>
+        </div> */}
         <p>
-          Get started by editing <code>pages/index.js</code>
+          <input type="file" onChange={handleChange} />
         </p>
-
-        <div>
-          <a href="https://nextjs.org/docs">
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn">
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a href="https://github.com/vercel/next.js/tree/master/examples">
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app">
-            <h3>Deploy &rarr;</h3>
-            <p>Instantly deploy your Next.js site to a public URL with Vercel.</p>
-          </a>
-        </div>
+        <p>
+          <button onClick={play}>再生</button>
+        </p>
+        <p>
+          <button onClick={stop}>ストップ</button>
+        </p>
+        <p>
+          <button onClick={next}>次のフレームへ</button>
+        </p>
       </main>
-
-      <footer>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by <img src="/vercel.svg" alt="Vercel Logo" />
-        </a>
-      </footer>
     </div>
   );
 }
